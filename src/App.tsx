@@ -1,23 +1,47 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
+
+type Section =
+  | "home"
+  | "catalogue"
+  | "articles"
+  | "consultants"
+  | "planning"
+  | "projects"
+  | "settings";
+
+const SECTIONS: { key: Section; label: string; desc: string; emoji: string }[] = [
+  { key: "catalogue", label: "Catalogue", desc: "Structure des offres & catégories", emoji: "🗂️" },
+  { key: "articles", label: "Articles", desc: "Référentiel des articles & unités", emoji: "📦" },
+  { key: "consultants", label: "Consultants", desc: "Ressources, compétences, disponibilité", emoji: "👥" },
+  { key: "planning", label: "Planning", desc: "Calendrier, affectations, jalons", emoji: "🗓️" },
+  { key: "projects", label: "Projets", desc: "Commandes → projets → prestations", emoji: "📁" },
+  { key: "settings", label: "Paramètres", desc: "Organisation, droits, préférences", emoji: "⚙️" },
+];
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [appLoading, setAppLoading] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [section, setSection] = useState<Section>("home");
+
+  const userLabel = useMemo(() => {
+    if (!session) return "";
+    return session.user.email ?? session.user.id;
+  }, [session]);
 
   useEffect(() => {
     let mounted = true;
 
     async function init() {
       setErrorMsg(null);
-      setMessage(null);
 
       const { data } = await supabase.auth.getSession();
       if (mounted) setSession(data.session ?? null);
@@ -37,9 +61,65 @@ export default function App() {
     };
   }, []);
 
+  // Charger / initialiser le profil Supabase (préférences) à la connexion
+  useEffect(() => {
+    if (!session) {
+      setSection("home");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadProfile() {
+      setAppLoading(true);
+      setErrorMsg(null);
+
+      const uid = session.user.id;
+
+      // 1) tentative de lecture
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("last_section")
+        .eq("id", uid)
+        .maybeSingle();
+
+      // 2) si aucune ligne, on crée
+      if (!cancelled && (!data || error)) {
+        const { error: upsertErr } = await supabase
+          .from("profiles")
+          .upsert({ id: uid, last_section: "home" });
+
+        if (!cancelled && upsertErr) setErrorMsg(upsertErr.message);
+        if (!cancelled) setSection("home");
+      } else if (!cancelled) {
+        const last = (data?.last_section as Section | undefined) ?? "home";
+        setSection(last);
+      }
+
+      if (!cancelled) setAppLoading(false);
+    }
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  // Persister le dernier écran ouvert
+  useEffect(() => {
+    if (!session) return;
+
+    const uid = session.user.id;
+
+    // éviter de spammer au tout début si on est en train de charger
+    if (appLoading) return;
+
+    supabase.from("profiles").update({ last_section: section }).eq("id", uid);
+  }, [section, session, appLoading]);
+
   const login = async () => {
     setErrorMsg(null);
-    setMessage(null);
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -51,7 +131,6 @@ export default function App() {
 
   const logout = async () => {
     setErrorMsg(null);
-    setMessage(null);
 
     const { error } = await supabase.auth.signOut();
     if (error) setErrorMsg(error.message);
@@ -70,10 +149,10 @@ export default function App() {
     return (
       <main className="page">
         <div className="card">
-          <h1>Meilleur logiciel de gestion de projet pour la meilleure équipe de DP certifiées en plus :)</h1>
+          <h1>Portail ERP</h1>
+          <p>Connexion e-mail / mot de passe (Supabase).</p>
 
           {errorMsg && <div className="error">Erreur : {errorMsg}</div>}
-          {message && <div className="info">{message}</div>}
 
           <label className="label">E-mail</label>
           <input
@@ -103,26 +182,87 @@ export default function App() {
     );
   }
 
-  // --- Écran WIP ---
+  // --- Shell applicatif ---
   return (
-    <main className="page">
-      <div className="card">
-        <div className="row">
-          <h1>WIP</h1>
-          <button className="secondary" onClick={logout}>
+    <div className="appShell">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brandTitle">ERP</div>
+          <div className="brandSub">Gestion de projet</div>
+        </div>
+
+        <nav className="nav">
+          <button
+            className={`navItem ${section === "home" ? "navItemActive" : ""}`}
+            onClick={() => setSection("home")}
+          >
+            🏠 Accueil
+          </button>
+
+          {SECTIONS.map((s) => (
+            <button
+              key={s.key}
+              className={`navItem ${section === s.key ? "navItemActive" : ""}`}
+              onClick={() => setSection(s.key)}
+            >
+              {s.emoji} {s.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebarFooter">
+          <div className="pill">{userLabel}</div>
+          <button className="secondary full" onClick={logout}>
             Se déconnecter
           </button>
         </div>
+      </aside>
 
-        <p>
-          Connecté : <strong>{session.user.email ?? session.user.id}</strong>
-        </p>
+      <main className="content">
+        <header className="topbar">
+          <div>
+            <div className="topTitle">
+              {section === "home"
+                ? "Accueil"
+                : SECTIONS.find((s) => s.key === section)?.label ?? "Module"}
+            </div>
+            <div className="topSub">
+              {section === "home"
+                ? "Choisissez un module."
+                : "WIP — écran en cours de construction."}
+            </div>
+          </div>
 
-        {errorMsg && <div className="error">Erreur : {errorMsg}</div>}
-        {message && <div className="info">{message}</div>}
+          {appLoading && <div className="pill">Sync…</div>}
+        </header>
 
-        <div className="wip">Zone de travail en cours.</div>
-      </div>
-    </main>
+        {errorMsg && <div className="error wide">Erreur : {errorMsg}</div>}
+
+        {section === "home" ? (
+          <section className="tiles">
+            {SECTIONS.map((s) => (
+              <button key={s.key} className="tile" onClick={() => setSection(s.key)}>
+                <div className="tileTop">
+                  <div className="tileEmoji">{s.emoji}</div>
+                  <div className="tileTitle">{s.label}</div>
+                </div>
+                <div className="tileDesc">{s.desc}</div>
+                <div className="tileCta">Ouvrir →</div>
+              </button>
+            ))}
+          </section>
+        ) : (
+          <section className="moduleCard">
+            <h2 className="moduleTitle">
+              {SECTIONS.find((s) => s.key === section)?.emoji}{" "}
+              {SECTIONS.find((s) => s.key === section)?.label}
+            </h2>
+            <p className="moduleText">
+              WIP. Prochaine étape : connecter ce module aux tables Supabase (CRUD + RLS).
+            </p>
+          </section>
+        )}
+      </main>
+    </div>
   );
 }
