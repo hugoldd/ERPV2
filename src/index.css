@@ -280,6 +280,9 @@ button.full { width: 100%; }
   backdrop-filter: blur(10px);
   box-shadow: var(--shadow-soft);
   transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+
+  /* FIX lisibilité : la tuile est un <button>, on force le texte clair */
+  color: var(--text);
 }
 
 .tile:hover {
@@ -308,13 +311,16 @@ button.full { width: 100%; }
 .tileTitle {
   font-size: 14px;
   font-weight: 900;
+
+  /* FIX lisibilité : titre plus clair */
+  color: rgba(241, 245, 249, 0.95);
 }
 
 .tileDesc {
   margin-top: 10px;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--muted);
+  color: rgba(226, 232, 240, 0.70);
 }
 
 .tileCta {
