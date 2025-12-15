@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "../supabase";
 import { Modal } from "../components/Modal";
@@ -20,6 +21,7 @@ type ClientDetail = ClientListRow & {
 function isDigits(s: string) {
   return /^[0-9]+$/.test(s);
 }
+
 function formatDate(iso: string) {
   try {
     return new Date(iso).toLocaleDateString("fr-FR", { year: "numeric", month: "2-digit", day: "2-digit" });
@@ -28,7 +30,10 @@ function formatDate(iso: string) {
   }
 }
 
-export function ClientsPage(props: { onError: (m: string | null) => void; setTopActions: (node: JSX.Element | null) => void }) {
+export function ClientsPage(props: {
+  onError: (m: string | null) => void;
+  setTopActions: (node: React.ReactNode) => void;
+}) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<ClientListRow[]>([]);
   const [listLoading, setListLoading] = useState(false);
@@ -112,31 +117,44 @@ export function ClientsPage(props: { onError: (m: string | null) => void; setTop
     return () => {
       cancelled = true;
     };
-  }, [selectedId]);
+  }, [selectedId, props]);
 
   // Topbar actions (injectées dans le shell)
   useEffect(() => {
     props.setTopActions(
       <div className="topActions">
-        <button className="secondary" onClick={() => {
-          props.onError(null);
-          setCreateOpen(true);
-          setNewName(""); setNewAddress(""); setNewPostal(""); setNewCity(""); setNewPhone(""); setNewContact("");
-        }}>
+        <button
+          className="secondary"
+          onClick={() => {
+            props.onError(null);
+            setCreateOpen(true);
+            setNewName("");
+            setNewAddress("");
+            setNewPostal("");
+            setNewCity("");
+            setNewPhone("");
+            setNewContact("");
+          }}
+        >
           + Nouveau client
         </button>
-        <button className="danger" disabled={!selectedId} onClick={() => {
-          props.onError(null);
-          setDeleteTyping("");
-          setDeleteOpen(true);
-        }}>
+
+        <button
+          className="danger"
+          disabled={!selectedId}
+          onClick={() => {
+            props.onError(null);
+            setDeleteTyping("");
+            setDeleteOpen(true);
+          }}
+        >
           Supprimer
         </button>
       </div>
     );
 
     return () => props.setTopActions(null);
-  }, [selectedId]);
+  }, [selectedId, props]);
 
   async function createClient() {
     const name = newName.trim();
@@ -217,7 +235,11 @@ export function ClientsPage(props: { onError: (m: string | null) => void; setTop
             {rows.map((c) => {
               const active = c.id === selectedId;
               return (
-                <button key={c.id} className={`listItem ${active ? "listItemActive" : ""}`} onClick={() => setSelectedId(c.id)}>
+                <button
+                  key={c.id}
+                  className={`listItem ${active ? "listItemActive" : ""}`}
+                  onClick={() => setSelectedId(c.id)}
+                >
                   <div className="listTop">
                     <div className="listTitle">{c.name}</div>
                     <div className="pill">#{c.client_no}</div>
@@ -285,8 +307,12 @@ export function ClientsPage(props: { onError: (m: string | null) => void; setTop
         onClose={() => setCreateOpen(false)}
         footer={
           <>
-            <button className="secondary" onClick={() => setCreateOpen(false)}>Annuler</button>
-            <button onClick={createClient} disabled={creating}>{creating ? "Création…" : "Créer"}</button>
+            <button className="secondary" onClick={() => setCreateOpen(false)}>
+              Annuler
+            </button>
+            <button onClick={createClient} disabled={creating}>
+              {creating ? "Création…" : "Créer"}
+            </button>
           </>
         }
       >
@@ -328,7 +354,9 @@ export function ClientsPage(props: { onError: (m: string | null) => void; setTop
         onClose={() => setDeleteOpen(false)}
         footer={
           <>
-            <button className="secondary" onClick={() => setDeleteOpen(false)}>Annuler</button>
+            <button className="secondary" onClick={() => setDeleteOpen(false)}>
+              Annuler
+            </button>
             <button className="danger" onClick={deleteClient} disabled={deleting}>
               {deleting ? "Suppression…" : "Supprimer"}
             </button>
@@ -338,9 +366,13 @@ export function ClientsPage(props: { onError: (m: string | null) => void; setTop
         <div className="dangerBox">
           Pour confirmer, saisissez <strong>SUPPRIMER</strong>.
         </div>
-        <input className="input" placeholder="SUPPRIMER" value={deleteTyping} onChange={(e) => setDeleteTyping(e.target.value)} />
+        <input
+          className="input"
+          placeholder="SUPPRIMER"
+          value={deleteTyping}
+          onChange={(e) => setDeleteTyping(e.target.value)}
+        />
       </Modal>
     </>
   );
 }
-
