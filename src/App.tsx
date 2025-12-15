@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
@@ -11,11 +11,6 @@ export default function App() {
 
   const [message, setMessage] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // URL "racine" de votre app (incluant /<repo>/ sur GitHub Pages)
-  const appRootUrl = useMemo(() => {
-    return `${window.location.origin}${import.meta.env.BASE_URL}`;
-  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -54,32 +49,6 @@ export default function App() {
     if (error) setErrorMsg(error.message);
   };
 
-  const signup = async () => {
-    setErrorMsg(null);
-    setMessage(null);
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        // utile si confirmation e-mail activée : l’utilisateur reviendra ici après clic
-        emailRedirectTo: appRootUrl,
-      },
-    });
-
-    if (error) {
-      setErrorMsg(error.message);
-      return;
-    }
-
-    // Si la confirmation e-mail est activée, la session peut être nulle tant que l’e-mail n’est pas confirmé.
-    if (!data.session) {
-      setMessage("Inscription enregistrée. Veuillez confirmer via l’e-mail reçu, puis reconnectez-vous.");
-    } else {
-      setMessage("Compte créé et connecté.");
-    }
-  };
-
   const logout = async () => {
     setErrorMsg(null);
     setMessage(null);
@@ -102,7 +71,6 @@ export default function App() {
       <main className="page">
         <div className="card">
           <h1>Meilleur logiciel de gestion de projet pour la meilleure équipe de DP certifiées en plus :)</h1>
-          
 
           {errorMsg && <div className="error">Erreur : {errorMsg}</div>}
           {message && <div className="info">{message}</div>}
@@ -129,7 +97,7 @@ export default function App() {
 
           <div className="row">
             <button onClick={login}>Se connecter</button>
-          </div>       
+          </div>
         </div>
       </main>
     );
