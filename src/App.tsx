@@ -11,7 +11,7 @@ type Section =
   | "projects"
   | "settings";
 
-const SECTIONS: { key: Section; label: string; desc: string; emoji: string }[] = [
+const SECTIONS: { key: Exclude<Section, "home">; label: string; desc: string; emoji: string }[] = [
   { key: "catalogue", label: "Catalogue", desc: "Structure des offres & catégories", emoji: "🗂️" },
   { key: "articles", label: "Articles", desc: "Référentiel des articles & unités", emoji: "📦" },
   { key: "consultants", label: "Consultants", desc: "Ressources, compétences, disponibilité", emoji: "👥" },
@@ -29,8 +29,9 @@ export default function App() {
   const [password, setPassword] = useState("");
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
   const [section, setSection] = useState<Section>("home");
+
+  const userId = session?.user.id ?? null;
 
   const userLabel = useMemo(() => {
     if (!session) return "";
@@ -61,29 +62,25 @@ export default function App() {
     };
   }, []);
 
-  // Charger / initialiser le profil Supabase (préférences) à la connexion
+  // Charger / initialiser le profil à la connexion
   useEffect(() => {
-    if (!session) {
+    if (!userId) {
       setSection("home");
       return;
     }
 
     let cancelled = false;
 
-    async function loadProfile() {
+    async function loadProfile(uid: string) {
       setAppLoading(true);
       setErrorMsg(null);
 
-      const uid = session.user.id;
-
-      // 1) tentative de lecture
       const { data, error } = await supabase
         .from("profiles")
         .select("last_section")
         .eq("id", uid)
         .maybeSingle();
 
-      // 2) si aucune ligne, on crée
       if (!cancelled && (!data || error)) {
         const { error: upsertErr } = await supabase
           .from("profiles")
@@ -99,24 +96,20 @@ export default function App() {
       if (!cancelled) setAppLoading(false);
     }
 
-    loadProfile();
+    loadProfile(userId);
 
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [userId]);
 
   // Persister le dernier écran ouvert
   useEffect(() => {
-    if (!session) return;
-
-    const uid = session.user.id;
-
-    // éviter de spammer au tout début si on est en train de charger
+    if (!userId) return;
     if (appLoading) return;
 
-    supabase.from("profiles").update({ last_section: section }).eq("id", uid);
-  }, [section, session, appLoading]);
+    supabase.from("profiles").update({ last_section: section }).eq("id", userId);
+  }, [section, userId, appLoading]);
 
   const login = async () => {
     setErrorMsg(null);
