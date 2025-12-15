@@ -251,7 +251,7 @@ export default function App() {
               {SECTIONS.find((s) => s.key === section)?.label}
             </h2>
             <p className="moduleText">
-              WIP. Prochaine étape : connecter ce module aux tables Supabase (CRUD + RLS).
+              WIP. 
             </p>
           </section>
         )}
