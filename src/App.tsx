@@ -221,8 +221,8 @@ export default function App() {
             </div>
             <div className="topSub">
               {section === "home"
-                ? "Choisissez un module."
-                : "WIP — écran en cours de construction."}
+                ? "Sélectionnez un module pour commencer."
+                : "Écran en cours de construction — prochaine étape : CRUD Supabase."}
             </div>
           </div>
 
