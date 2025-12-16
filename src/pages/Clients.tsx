@@ -1,21 +1,18 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase";
 import { Modal } from "../components/Modal";
 
-type ClientListRow = {
+type ClientRow = {
   id: string;
-  client_no: number;
+  client_no: number | null;
   name: string;
+  address_line: string | null;
   postal_code: string | null;
   city: string | null;
   phone: string | null;
   contact_name: string | null;
   created_at: string;
-};
-
-type ClientDetail = ClientListRow & {
-  address_line: string | null;
 };
 
 function isDigits(s: string) {
@@ -35,13 +32,16 @@ export function ClientsPage(props: {
   setTopActions: (node: React.ReactNode) => void;
 }) {
   const [q, setQ] = useState("");
-  const [rows, setRows] = useState<ClientListRow[]>([]);
+  const [rows, setRows] = useState<ClientRow[]>([]);
   const [listLoading, setListLoading] = useState(false);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<ClientDetail | null>(null);
+  const [detail, setDetail] = useState<ClientRow | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  const selectedRow = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId]);
+
+  // --- Modals (Create/Delete) ---
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -55,7 +55,7 @@ export function ClientsPage(props: {
   const [deleteTyping, setDeleteTyping] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     const query = q.trim().replace(/,/g, " ");
     setListLoading(true);
     props.onError(null);
@@ -64,30 +64,40 @@ export function ClientsPage(props: {
       .from("clients")
       .select("id,client_no,name,postal_code,city,phone,contact_name,created_at")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(100);
 
     if (query.length > 0) {
-      if (isDigits(query)) req = req.or(`name.ilike.%${query}%,client_no.eq.${query}`);
-      else req = req.ilike("name", `%${query}%`);
+      if (isDigits(query)) {
+        req = req.or(`client_no.eq.${query},name.ilike.%${query}%`);
+      } else {
+        req = req.ilike("name", `%${query}%`);
+      }
     }
 
     const { data, error } = await req;
-    if (error) props.onError(error.message);
-    setRows((data ?? []) as ClientListRow[]);
+
+    if (error) {
+      props.onError(error.message);
+      setRows([]);
+    } else {
+      setRows((data ?? []) as ClientRow[]);
+    }
+
     setListLoading(false);
-  }
+  }, [q, props]);
 
+  // debounce search
   useEffect(() => {
-    const t = window.setTimeout(refresh, 200);
+    const t = window.setTimeout(() => void refresh(), 200);
     return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q]);
+  }, [refresh]);
 
+  // initial load
   useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void refresh();
+  }, [refresh]);
 
+  // load detail when selected changes
   useEffect(() => {
     if (!selectedId) {
       setDetail(null);
@@ -96,24 +106,30 @@ export function ClientsPage(props: {
 
     let cancelled = false;
 
-    async function load() {
+    async function load(id: string) {
       setDetailLoading(true);
       props.onError(null);
 
       const { data, error } = await supabase
         .from("clients")
         .select("id,client_no,name,address_line,postal_code,city,phone,contact_name,created_at")
-        .eq("id", selectedId)
-        .single();
+        .eq("id", id)
+        .maybeSingle();
 
-      if (!cancelled) {
-        if (error) props.onError(error.message);
-        setDetail((data ?? null) as ClientDetail | null);
-        setDetailLoading(false);
+      if (cancelled) return;
+
+      if (error) {
+        props.onError(error.message);
+        setDetail(null);
+      } else {
+        setDetail((data ?? null) as ClientRow | null);
       }
+
+      setDetailLoading(false);
     }
 
-    load();
+    void load(selectedId);
+
     return () => {
       cancelled = true;
     };
@@ -166,6 +182,7 @@ export function ClientsPage(props: {
     setCreating(true);
     props.onError(null);
 
+    // client_no est généré automatiquement (identity) côté BDD
     const { data, error } = await supabase
       .from("clients")
       .insert({
@@ -176,7 +193,7 @@ export function ClientsPage(props: {
         phone: newPhone.trim() || null,
         contact_name: newContact.trim() || null,
       })
-      .select("id")
+      .select("id,client_no")
       .single();
 
     setCreating(false);
@@ -220,60 +237,85 @@ export function ClientsPage(props: {
   return (
     <>
       <section className="clientsGrid">
+        {/* LISTE (tableau) */}
         <div className="panel">
           <div className="panelHeader">
             <div>
               <div className="panelTitle">Clients</div>
               <div className="panelSub">Recherche par nom ou numéro</div>
             </div>
-            {listLoading && <div className="pill">Chargement…</div>}
+            {listLoading ? <div className="badge">Chargement…</div> : null}
           </div>
 
-          <input className="input" placeholder="Ex: Dupont ou 1024" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="input" placeholder="Ex : Dupont ou 1024" value={q} onChange={(e) => setQ(e.target.value)} />
 
-          <div className="list">
-            {rows.map((c) => {
-              const active = c.id === selectedId;
-              return (
-                <button
-                  key={c.id}
-                  className={`listItem ${active ? "listItemActive" : ""}`}
-                  onClick={() => setSelectedId(c.id)}
-                >
-                  <div className="listTop">
-                    <div className="listTitle">{c.name}</div>
-                    <div className="pill">#{c.client_no}</div>
-                  </div>
-                  <div className="listMeta">
-                    <span>{[c.postal_code, c.city].filter(Boolean).join(" ") || "—"}</span>
-                    <span>•</span>
-                    <span>{c.contact_name || "—"}</span>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="tableWrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{ width: 90 }}>N°</th>
+                  <th>Client</th>
+                  <th style={{ width: 160 }}>Ville</th>
+                  <th style={{ width: 180 }}>Contact</th>
+                  <th style={{ width: 160 }}>Téléphone</th>
+                  <th style={{ width: 140 }}>Création</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((c) => {
+                  const active = c.id === selectedId;
+                  return (
+                    <tr
+                      key={c.id}
+                      className={active ? "rowActive" : ""}
+                      onClick={() => setSelectedId(c.id)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <td className="mono">{c.client_no ?? "—"}</td>
+                      <td>
+                        <div className="cellMain">{c.name}</div>
+                      </td>
+                      <td>{c.city ?? "—"}</td>
+                      <td>{c.contact_name ?? "—"}</td>
+                      <td className="mono">{c.phone ?? "—"}</td>
+                      <td className="mono">{formatDate(c.created_at)}</td>
+                    </tr>
+                  );
+                })}
 
-            {!listLoading && rows.length === 0 && <div className="emptyState">Aucun client trouvé.</div>}
+                {!listLoading && rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>
+                      <div className="emptyState">Aucun client trouvé.</div>
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
         </div>
 
+        {/* FICHE */}
         <div className="panel">
           <div className="panelHeader">
             <div>
               <div className="panelTitle">Fiche client</div>
-              <div className="panelSub">Informations principales</div>
+              <div className="panelSub">
+                {selectedRow?.client_no ? `Client n° ${selectedRow.client_no}` : "Informations principales"}
+              </div>
             </div>
-            {detailLoading && <div className="pill">Chargement…</div>}
+            {detailLoading ? <div className="badge">Chargement…</div> : null}
           </div>
 
           {!selectedId ? (
             <div className="emptyState">Sélectionnez un client dans la liste.</div>
           ) : !detail ? (
-            <div className="emptyState">Aucune donnée.</div>
+            <div className="emptyState">Impossible de charger la fiche (droits RLS / client introuvable).</div>
           ) : (
             <div className="detailsGrid">
-              <div className="kvKey">Numéro</div>
-              <div className="kvVal">#{detail.client_no}</div>
+              <div className="kvKey">Numéro client</div>
+              <div className="kvVal">#{detail.client_no ?? "—"}</div>
 
               <div className="kvKey">Nom</div>
               <div className="kvVal">{detail.name}</div>
@@ -293,13 +335,14 @@ export function ClientsPage(props: {
               <div className="kvKey">Contact</div>
               <div className="kvVal">{detail.contact_name || "—"}</div>
 
-              <div className="kvKey">Créé le</div>
+              <div className="kvKey">Date de création</div>
               <div className="kvVal">{formatDate(detail.created_at)}</div>
             </div>
           )}
         </div>
       </section>
 
+      {/* CREATE */}
       <Modal
         open={createOpen}
         title="Nouveau client"
@@ -347,10 +390,11 @@ export function ClientsPage(props: {
         </div>
       </Modal>
 
+      {/* DELETE */}
       <Modal
         open={deleteOpen}
         title="Supprimer le client"
-        subtitle="Action définitive"
+        subtitle={selectedRow ? `Client #${selectedRow.client_no ?? "—"} — ${selectedRow.name}` : "Action définitive"}
         onClose={() => setDeleteOpen(false)}
         footer={
           <>
@@ -366,12 +410,7 @@ export function ClientsPage(props: {
         <div className="dangerBox">
           Pour confirmer, saisissez <strong>SUPPRIMER</strong>.
         </div>
-        <input
-          className="input"
-          placeholder="SUPPRIMER"
-          value={deleteTyping}
-          onChange={(e) => setDeleteTyping(e.target.value)}
-        />
+        <input className="input" placeholder="SUPPRIMER" value={deleteTyping} onChange={(e) => setDeleteTyping(e.target.value)} />
       </Modal>
     </>
   );
