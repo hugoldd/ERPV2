@@ -1,7 +1,7 @@
-import React from "react";
+import type React from "react";
+import type { Section } from "../types/app";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
-import type { Section } from "../types/app";
 
 export function AppShell(props: {
   section: Section;
@@ -33,4 +33,3 @@ export function AppShell(props: {
     </div>
   );
 }
-
