@@ -39,8 +39,9 @@ html { font-family: var(--font); }
 
 body {
   margin: 0;
-  background: radial-gradient(900px 500px at 20% 0%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 60%),
-              var(--background);
+  background:
+    radial-gradient(900px 500px at 20% 0%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 60%),
+    var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -156,6 +157,7 @@ button:disabled {
   transform: none;
 }
 
+/* Pills/Badges */
 .pill {
   display: inline-flex;
   align-items: center;
@@ -166,6 +168,23 @@ button:disabled {
   background: color-mix(in oklch, var(--muted) 35%, transparent);
   color: var(--muted-foreground);
   font-size: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--muted) 30%, transparent);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 .error {
@@ -381,50 +400,6 @@ button:disabled {
 .panelTitle { font-weight: 800; }
 .panelSub { margin-top: 4px; font-size: 12px; color: var(--muted-foreground); }
 
-.list {
-  margin-top: 12px;
-  display: grid;
-  gap: 10px;
-  max-height: 520px;
-  overflow: auto;
-  padding-right: 2px;
-}
-
-.listItem {
-  width: 100%;
-  text-align: left;
-  padding: 12px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  background: color-mix(in oklch, var(--muted) 18%, transparent);
-  box-shadow: none;
-}
-
-.listItem:hover { background: color-mix(in oklch, var(--muted) 26%, transparent); }
-
-.listItemActive {
-  border-color: color-mix(in oklch, var(--primary) 60%, var(--border));
-  background: color-mix(in oklch, var(--primary) 14%, transparent);
-}
-
-.listTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.listTitle { font-weight: 800; }
-
-.listMeta {
-  margin-top: 6px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  color: var(--muted-foreground);
-  font-size: 12px;
-}
-
 .emptyState {
   margin-top: 14px;
   padding: 14px;
@@ -443,6 +418,56 @@ button:disabled {
 
 .kvKey { color: var(--muted-foreground); font-size: 13px; }
 .kvVal { font-weight: 650; }
+
+/* ===== Table (style “liste en colonnes”) ===== */
+
+.tableWrap {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: color-mix(in oklch, var(--card) 92%, transparent);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table thead th {
+  text-align: left;
+  font-weight: 700;
+  color: color-mix(in oklch, var(--foreground) 80%, transparent);
+  background: color-mix(in oklch, var(--muted) 30%, transparent);
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table tbody td {
+  padding: 12px 12px;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  color: color-mix(in oklch, var(--foreground) 92%, transparent);
+}
+
+.table tbody tr {
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.table tbody tr:hover {
+  background: color-mix(in oklch, var(--muted) 26%, transparent);
+}
+
+.table tbody tr.rowActive {
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+  outline: 1px solid color-mix(in oklch, var(--primary) 38%, transparent);
+}
+
+.cellMain { font-weight: 700; }
 
 /* =========
    Modal
