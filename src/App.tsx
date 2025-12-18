@@ -1,157 +1,134 @@
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "./supabase";
+import { useEffect, useState } from "react";
+import { Sidebar } from "./components/Sidebar";
+import { TopBar } from "./components/TopBar";
+import { PortfolioPage } from "./pages/PortfolioPage";
+import { ResourcesPage } from "./pages/ResourcesPage";
+import { ArticlesPage } from "./pages/ArticlesPage";
+import { CompetencesPage } from "./pages/CompetencesPage";
+import { AdministrationPage } from "./pages/AdministrationPage";
+import { PlanningPage } from "./pages/PlanningPage";
+import { ReportingPage } from "./pages/ReportingPage";
+import { ClientsPage } from "./pages/ClientsPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { supabase } from "./lib/supabase";
 
-import type { Section } from "./types/app";
-import { SECTIONS } from "./types/app";
-
-import { useSession } from "./hooks/useSession";
-import { AppShell } from "./components/AppShell";
-
-import { HomePage } from "./pages/Home";
-import { ClientsPage } from "./pages/Clients";
-import { WipPage } from "./pages/Wip";
+export type NavigationPage =
+  | "portfolio"
+  | "projects"
+  | "planning"
+  | "resources"
+  | "clients"
+  | "competences"
+  | "articles"
+  | "reporting"
+  | "administration";
 
 export default function App() {
-  const { session, loading } = useSession();
+  const [currentPage, setCurrentPage] = useState<NavigationPage>("portfolio");
+  const [supabaseStatus, setSupabaseStatus] = useState<
+    "checking" | "ok" | "error"
+  >("checking");
+  const [supabaseError, setSupabaseError] = useState<string | null>(null);
 
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [section, setSection] = useState<Section>("home");
-
-  // actions injectées par une page (ex: Clients)
-  const [topActions, setTopActions] = useState<React.ReactNode>(null);
-
-  const userId = session?.user.id ?? null;
-
-  const userLabel = useMemo(() => {
-    if (!session) return "";
-    return session.user.email ?? session.user.id;
-  }, [session]);
-
-  // --- Profile: last_section (Supabase) ---
   useEffect(() => {
-    if (!userId) {
-      setSection("home");
-      return;
-    }
+    (async () => {
+      try {
+        // 1) Test session
+        const { data: sessionData, error: sessionError } =
+          await supabase.auth.getSession();
 
-    let cancelled = false;
+        if (sessionError) throw sessionError;
 
-    async function loadProfile(uid: string) {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("last_section")
-        .eq("id", uid)
-        .maybeSingle();
+        console.log("Supabase session:", sessionData.session);
 
-      if (!cancelled && (!data || error)) {
-        await supabase.from("profiles").upsert({ id: uid, last_section: "home" });
-        if (!cancelled) setSection("home");
-      } else if (!cancelled) {
-        setSection(((data?.last_section as Section | undefined) ?? "home"));
+        // 2) Optionnel : récupérer le user (non bloquant si pas de session)
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser();
+
+        if (userError) {
+          console.log("Supabase getUser (non bloquant):", userError.message);
+        } else {
+          console.log("Supabase user:", userData.user);
+        }
+
+        setSupabaseStatus("ok");
+        setSupabaseError(null);
+      } catch (e: any) {
+        console.error("Supabase init error:", e);
+        setSupabaseStatus("error");
+        setSupabaseError(e?.message ?? "Erreur Supabase inconnue.");
       }
+    })();
+  }, []);
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case "portfolio":
+        return <PortfolioPage />;
+      case "projects":
+        return <ProjectsPage />;
+      case "planning":
+        return <PlanningPage />;
+      case "resources":
+        return <ResourcesPage />;
+      case "clients":
+        return <ClientsPage />;
+      case "competences":
+        return <CompetencesPage />;
+      case "articles":
+        return <ArticlesPage />;
+      case "reporting":
+        return <ReportingPage />;
+      case "administration":
+        return <AdministrationPage />;
+      default:
+        return <PortfolioPage />;
     }
-
-    loadProfile(userId);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId) return;
-    supabase.from("profiles").update({ last_section: section }).eq("id", userId);
-  }, [section, userId]);
-
-  const login = async (email: string, password: string) => {
-    setErrorMsg(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setErrorMsg(error.message);
   };
 
-  const logout = async () => {
-    setErrorMsg(null);
-    const { error } = await supabase.auth.signOut();
-    if (error) setErrorMsg(error.message);
-  };
-
-  if (loading) {
+  if (supabaseStatus === "error") {
     return (
-      <main className="page">
-        <div className="card">Chargement…</div>
-      </main>
+      <div className="h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="max-w-xl w-full bg-white border rounded-lg p-6">
+          <h1 className="text-lg font-semibold text-gray-900">
+            Configuration Supabase invalide
+          </h1>
+          <p className="text-sm text-gray-600 mt-2">
+            Vérifiez que vous avez bien défini{" "}
+            <code className="px-1 py-0.5 bg-gray-100 rounded">
+              VITE_SUPABASE_URL
+            </code>{" "}
+            et{" "}
+            <code className="px-1 py-0.5 bg-gray-100 rounded">
+              VITE_SUPABASE_ANON_KEY
+            </code>{" "}
+            dans les variables d’environnement (GitHub Actions / Secrets si vous
+            déployez via Pages).
+          </p>
+          <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3">
+            {supabaseError}
+          </div>
+        </div>
+      </div>
     );
   }
 
-  // --- Login screen ---
-  if (!session) {
-    return <LoginScreen errorMsg={errorMsg} onLogin={login} />;
-  }
-
-  const title = section === "home"
-    ? "Accueil"
-    : SECTIONS.find((s) => s.key === section)?.label ?? "Module";
-
-  const subtitle = section === "home"
-    ? "Sélectionnez un module pour commencer."
-    : section === "clients"
-      ? "Recherche, liste et fiche client (Supabase)."
-      : "Écran en cours de construction.";
-
   return (
-    <AppShell
-      section={section}
-      onNavigate={(s) => {
-        setErrorMsg(null);
-        setSection(s);
-      }}
-      userLabel={userLabel}
-      onLogout={logout}
-      title={title}
-      subtitle={subtitle}
-      topActions={topActions}
-      errorMsg={errorMsg}
-    >
-      {section === "home" ? (
-        <HomePage onOpen={(s) => setSection(s)} />
-      ) : section === "clients" ? (
-        <ClientsPage
-          onError={setErrorMsg}
-          setTopActions={setTopActions}
-        />
-      ) : (
-        <WipPage title={title} />
-      )}
-    </AppShell>
-  );
-}
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
 
-/** Login séparé pour garder App.tsx propre */
-function LoginScreen(props: {
-  errorMsg: string | null;
-  onLogin: (email: string, password: string) => Promise<void>;
-}) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <TopBar currentPage={currentPage} />
 
-  return (
-    <main className="page">
-      <div className="card">
-        <h1>Portail ERP</h1>
-        <p>Connexion e-mail / mot de passe (Supabase).</p>
-
-        {props.errorMsg && <div className="error">Erreur : {props.errorMsg}</div>}
-
-        <label className="label">E-mail</label>
-        <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-
-        <label className="label">Mot de passe</label>
-        <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-
-        <div className="row">
-          <button onClick={() => props.onLogin(email, password)}>Se connecter</button>
-        </div>
+        <main className="flex-1 overflow-y-auto">
+          {supabaseStatus === "checking" && (
+            <div className="px-4 py-2 text-sm text-gray-600 border-b bg-white">
+              Connexion à Supabase…
+            </div>
+          )}
+          {renderPage()}
+        </main>
       </div>
-    </main>
+    </div>
   );
 }
