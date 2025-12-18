@@ -9,7 +9,7 @@ import {
   Building2,
   Award,
 } from "lucide-react";
-import { NavigationPage } from "../App";
+import type { NavigationPage } from "../App";
 
 interface SidebarProps {
   currentPage: NavigationPage;

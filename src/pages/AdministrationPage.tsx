@@ -3,16 +3,9 @@ import { Package, Workflow, Settings as SettingsIcon, Plus, Edit, Trash2 } from 
 import { ManageProjectTemplateModal } from '../components/modals/ManageProjectTemplateModal';
 import { SequencingModal } from '../components/modals/SequencingModal';
 import { Toast } from '../components/Toast';
+import type { ProjectTemplate } from "../types/projectTemplate";
 
-export type ProjectTemplate = {
-  id: string;
-  name: string;
-  description: string;
-  type: 'Packagé' | 'Sur-mesure';
-  articles: string[]; // Article IDs
-  estimatedDuration: number;
-  estimatedDays: number;
-};
+
 
 const mockTemplates: ProjectTemplate[] = [
   {

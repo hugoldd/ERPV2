@@ -51,10 +51,12 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
+    chunkSizeWarningLimit: 700,
     outDir: "build",
   },
   server: {
     port: 3000,
     open: true,
-  },
+  }
+  ,
 });

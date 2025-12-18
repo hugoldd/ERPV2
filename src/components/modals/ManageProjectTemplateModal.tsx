@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Modal } from './Modal';
 import { Plus, X } from 'lucide-react';
 import { Toast } from '../Toast';
-import { ProjectTemplate } from '../../pages/AdministrationPage';
+import type { ProjectTemplate } from "../../types/projectTemplate";
+
 
 interface ManageProjectTemplateModalProps {
   isOpen: boolean;

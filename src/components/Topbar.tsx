@@ -2,7 +2,7 @@ import { Plus, Bell, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { ManageProjectModal } from './modals/ManageProjectModal';
 import { Toast } from './Toast';
-import { NavigationPage } from '../App';
+import type { NavigationPage } from '../App';
 
 interface TopBarProps {
   currentPage: NavigationPage;
