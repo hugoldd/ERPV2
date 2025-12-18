@@ -1,0 +1,6 @@
+# Texte : normaliser en LF dans le dépôt
+* text=auto eol=lf
+
+# Windows scripts éventuels
+*.bat text eol=crlf
+*.cmd text eol=crlf
