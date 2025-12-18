@@ -27,9 +27,9 @@ export type Consultant = {
   competences: string[];
   location: string;
   service: string;
-  email?: string; // ✅ non obligatoire
+  email?: string;
   phone?: string;
-  workDays: WorkDays; // ✅ jours travaillés
+  workDays: WorkDays;
 };
 
 export type Competence = {
@@ -109,7 +109,16 @@ export type ProjectLine = {
   articleService?: string;
   articleCompetencesRequired?: string[];
 
+  /**
+   * Vendu TOTAL (constant au sein d'un groupe)
+   */
   soldQuantity: number;
+
+  /**
+   * Quantité portée par CETTE ligne (reliquat ou allocation)
+   */
+  lineQuantity: number;
+
   amount: number;
 
   consultantId?: string | null;
@@ -121,5 +130,9 @@ export type ProjectLine = {
   realizedQuantity: number;
 
   bookingId?: string | null;
-};
 
+  /**
+   * Identifiant de groupe "chapeau + sous-lignes"
+   */
+  groupId: string;
+};
