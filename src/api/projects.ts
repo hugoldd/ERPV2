@@ -126,6 +126,7 @@ export async function deleteProject(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ✅ CORRIGÉ : Ajout de comment, group_id, sold_total, line_quantity
 export async function fetchProjectLines(projectId: string): Promise<ProjectLine[]> {
   const { data, error } = await supabase
     .from("project_lines")
@@ -142,6 +143,10 @@ export async function fetchProjectLines(projectId: string): Promise<ProjectLine[
       planned_quantity,
       realized_quantity,
       booking_id,
+      comment,
+      group_id,
+      sold_total,
+      line_quantity,
       article:articles(
         id,
         name,
@@ -171,6 +176,7 @@ export async function fetchProjectLines(projectId: string): Promise<ProjectLine[
       .map((x: any) => x.competence?.name)
       .filter(Boolean),
     soldQuantity: Number(r.sold_quantity ?? 0),
+    lineQuantity: Number(r.line_quantity ?? 0), // ✅ AJOUTÉ
     amount: Number(r.amount ?? 0),
     consultantId: r.consultant_id ?? null,
     consultantName: r.consultant?.name ?? null,
@@ -179,6 +185,7 @@ export async function fetchProjectLines(projectId: string): Promise<ProjectLine[
     plannedQuantity: Number(r.planned_quantity ?? 0),
     realizedQuantity: Number(r.realized_quantity ?? 0),
     bookingId: r.booking_id ?? null,
+    groupId: r.group_id ?? r.id, // ✅ AJOUTÉ (fallback sur id si null)
   }));
 }
 
