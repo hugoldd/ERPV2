@@ -18,7 +18,6 @@ import {
 import { Modal } from "./Modal";
 import type { Article, Consultant, Project, ProjectLine, Client, PlanningItem } from "../../types";
 import {
-  allocateProjectLineDays,
   createProjectLine,
   deleteProjectLine,
   fetchProjectLines,
@@ -499,10 +498,6 @@ export function ProjectDetailModal({ isOpen, onClose, project, articles, consult
   };
 
   const handlePlanDays = async () => {
-    const l = selectedExpandedLine;
-    if (!l) return;
-
-    if (!isExpandedLineRemainder) {
       setPlanError("Veuillez planifier depuis la ligne reliquat (non attribuée).");
       return;
     }
